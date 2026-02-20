@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>形近字大挑戰（結算簡化版）</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            overflow-x: hidden;
+        }
+
+        ruby {
+            display: inline-flex;
+            flex-direction: row;
+            align-items: center;
+            margin-right: 0.4em; 
+            position: relative;
+        }
+
+        rt {
+            display: inline-flex;
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            font-size: 0.4em; 
+            line-height: 1;
+            color: #4b5563;
+            padding-left: 0.25em;
+            font-family: sans-serif; 
+            position: relative;
+            letter-spacing: 0.1em;
+        }
+
+        .tone-mark {
+            display: inline-block;
+            position: absolute;
+            right: -0.85em; 
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.8em;
+        }
+
+        .tone-light {
+            display: inline-block;
+            position: absolute;
+            top: -0.6em;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .game-card {
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border: 4px solid #fff;
+            border-radius: 2rem;
+        }
+
+        .option-btn {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            transform: scale(1.05);
+        }
+
+        .floating {
+            animation: floating 3s ease-in-out infinite;
+        }
+
+        @keyframes floating {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .bounce {
+            animation: bounce 0.6s infinite alternate;
+        }
+
+        @keyframes bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-5px); }
+        }
+
+        .bracket {
+            color: #f97316;
+            margin: 0 0.2em;
+            font-weight: 900;
+        }
+
+        .rationale-card {
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 1rem;
+            padding: 1rem;
+            border: 2px dashed #e2e8f0;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div id="game-container" class="w-full max-w-2xl">
+        <!-- 封面頁 -->
+        <div id="start-screen" class="game-card bg-yellow-400 p-8 text-center border-orange-500">
+            <div class="mb-6">
+                <span class="text-6xl floating inline-block">✏️</span>
+            </div>
+            <h1 id="title-area" class="text-4xl font-black text-orange-900 mb-6"></h1>
+            <div id="welcome-msg" class="text-orange-900 text-xl mb-8 font-bold leading-loose flex flex-wrap justify-center"></div>
+            <button onclick="startGame()" class="bg-orange-600 hover:bg-orange-700 text-white text-2xl font-bold py-4 px-12 rounded-full shadow-lg transition-all transform hover:scale-110">
+                <span id="start-btn-text"></span>
+            </button>
+        </div>
+
+        <!-- 遊戲主畫面 -->
+        <div id="quiz-screen" class="hidden">
+            <div class="mb-4 flex justify-between items-center bg-white px-6 py-3 rounded-full shadow-sm">
+                <div class="text-orange-700 font-bold text-lg" id="quiz-header-left"></div>
+                <div class="w-1/3 bg-gray-200 h-3 rounded-full overflow-hidden">
+                    <div id="progress-bar" class="bg-orange-500 h-full transition-all duration-500" style="width: 10%"></div>
+                </div>
+                <div class="text-green-700 font-bold text-lg" id="quiz-header-right"></div>
+            </div>
+
+            <div class="game-card bg-white p-6 sm:p-8 border-blue-400">
+                <div id="question-text" class="text-5xl font-bold text-gray-800 text-center mb-10 leading-relaxed min-h-[3em] flex flex-wrap items-center justify-center"></div>
+                
+                <div id="options-container" class="flex justify-center gap-6 sm:gap-8 mb-4"></div>
+                
+                <div id="feedback-area" class="hidden mt-6 p-5 rounded-3xl text-center border-2 bg-yellow-50 border-yellow-200">
+                    <p id="feedback-result" class="text-2xl font-bold mb-4"></p>
+                    
+                    <!-- 對比區塊 -->
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div id="compare-left" class="rationale-card text-center"></div>
+                        <div id="compare-right" class="rationale-card text-center"></div>
+                    </div>
+                    
+                    <button id="next-btn" onclick="nextQuestion()" class="bg-blue-600 hover:bg-blue-700 text-white text-xl font-bold py-3 px-10 rounded-full shadow-md"></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 結算畫面 -->
+        <div id="result-screen" class="hidden game-card bg-purple-600 p-10 text-center border-purple-800 text-white">
+            <h2 id="result-title" class="text-4xl font-bold mb-6"></h2>
+            <div class="text-7xl mb-10" id="result-emoji">🏆</div>
+            <div id="result-text" class="text-2xl mb-10 font-bold opacity-95 leading-loose flex flex-wrap justify-center"></div>
+            <button onclick="resetGame()" class="bg-white text-purple-700 text-2xl font-bold py-4 px-12 rounded-full hover:bg-gray-100 shadow-xl transition-all transform hover:scale-105">
+                <span id="retry-btn-text"></span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function rb(str) {
+            if (!str) return "";
+            let formatted = str.replace(/「 」/g, '<span class="bracket">「 　 」</span>');
+            return formatted.replace(/([^\x00-\xff])\(([^)]+)\)/g, (match, char, pinyin) => {
+                let tone = "";
+                let mainPinyin = pinyin;
+                if (pinyin.includes('ˊ')) { tone = '<span class="tone-mark">ˊ</span>'; mainPinyin = pinyin.replace('ˊ', ''); }
+                else if (pinyin.includes('ˇ')) { tone = '<span class="tone-mark">ˇ</span>'; mainPinyin = pinyin.replace('ˇ', ''); }
+                else if (pinyin.includes('ˋ')) { tone = '<span class="tone-mark">ˋ</span>'; mainPinyin = pinyin.replace('ˋ', ''); }
+                else if (pinyin.includes('˙')) { tone = '<span class="tone-light">˙</span>'; mainPinyin = pinyin.replace('˙', ''); }
+                return `<ruby>${char}<rt>${mainPinyin}${tone}</rt></ruby>`;
+            });
+        }
+
+        const rawQuizData = [
+            { 
+                q: "眼(ㄧㄢˇ)「 」", 
+                correct: { char: "鏡", py: "ㄐㄧㄥˋ", phrase: "眼(ㄧㄢˇ)鏡(ㄐㄧㄥˋ)" },
+                wrong: { char: "境", py: "ㄐㄧㄥˋ", phrase: "環(ㄏㄨㄢˊ)境(ㄐㄧㄥˋ)" }
+            },
+            { 
+                q: "環(ㄏㄨㄢˊ)「 」", 
+                correct: { char: "境", py: "ㄐㄧㄥˋ", phrase: "環(ㄏㄨㄢˊ)境(ㄐㄧㄥˋ)" },
+                wrong: { char: "鏡", py: "ㄐㄧㄥˋ", phrase: "鏡(ㄐㄧㄥˋ)子(ㄗ˙)" }
+            },
+            { 
+                q: "收(ㄕㄡ)「 」", 
+                correct: { char: "拾", py: "ㄕˊ", phrase: "收(ㄕㄡ)拾(ㄕˊ)" },
+                wrong: { char: "搭", py: "ㄉㄚ", phrase: "搭(ㄉㄚ)配(ㄆㄟˋ)" }
+            },
+            { 
+                q: "泥(ㄋㄧˊ)「 」", 
+                correct: { char: "沙", py: "ㄕㄚ", phrase: "泥(ㄋㄧˊ)沙(ㄕㄚ)" },
+                wrong: { char: "吵", py: "ㄔㄠˇ", phrase: "吵(ㄔㄠˇ)架(ㄐㄧㄚˋ)" }
+            },
+            { 
+                q: "特(ㄊㄜˋ)「 」", 
+                correct: { char: "製", py: "ㄓˋ", phrase: "特(ㄊㄜˋ)製(ㄓˋ)" },
+                wrong: { char: "制", py: "ㄓˋ", phrase: "制(ㄓˋ)度(ㄉㄨˋ)" }
+            },
+            { 
+                q: "煩(ㄈㄢˊ)「 」", 
+                correct: { char: "惱", py: "ㄋㄠˇ", phrase: "煩(ㄈㄢˊ)惱(ㄋㄠˇ)" },
+                wrong: { char: "腦", py: "ㄋㄠˇ", phrase: "大(ㄉㄚˋ)腦(ㄋㄠˇ)" }
+            },
+            { 
+                q: "「 」靠(ㄎㄠˋ)", 
+                correct: { char: "倚", py: "ㄧˇ", phrase: "倚(ㄧˇ)靠(ㄎㄠˋ)" },
+                wrong: { char: "椅", py: "ㄧˇ", phrase: "椅(ㄧˇ)子(ㄗ˙)" }
+            },
+            { 
+                q: "「 」骨(ㄍㄨˇ)", 
+                correct: { char: "肋", py: "ㄌㄜˋ", phrase: "肋(ㄌㄜˋ)骨(ㄍㄨˇ)" },
+                wrong: { char: "助", py: "ㄓㄨˋ", phrase: "幫(ㄅㄤ)助(ㄓㄨˋ)" }
+            },
+            { 
+                q: "美(ㄇㄟˇ)「 」", 
+                correct: { char: "妙", py: "ㄇㄧㄠˋ", phrase: "美(ㄇㄟˇ)妙(ㄇㄧㄠˋ)" },
+                wrong: { char: "炒", py: "ㄔㄠˇ", phrase: "炒(ㄔㄠˇ)菜(ㄘㄞˋ)" }
+            }
+        ];
+
+        let quizData = [];
+        let currentIdx = 0;
+        let score = 0;
+        let answered = false;
+
+        function initStaticText() {
+            document.getElementById('title-area').innerHTML = rb("形(ㄒㄧㄥˊ)近(ㄐㄧㄣˋ)字(ㄗˋ)大(ㄉㄚˋ)挑(ㄊㄧㄠˇ)戰(ㄓㄢˋ)");
+            document.getElementById('welcome-msg').innerHTML = rb("選(ㄒㄩㄢˇ)出(ㄔㄨ)最(ㄗㄨㄟˋ)適(ㄕˋ)當(ㄉㄤˋ)的(ㄉㄜ˙)字(ㄗˋ)填(ㄊㄧㄢˊ)入(ㄖㄨˋ)「 」中(ㄓㄨㄥ)吧(ㄅㄚ)！");
+            document.getElementById('start-btn-text').innerHTML = rb("開(ㄎㄞ)始(ㄕˇ)挑(ㄊㄧㄠˇ)戰(ㄓㄢˋ)");
+            document.getElementById('retry-btn-text').innerHTML = rb("再(ㄗㄞˋ)玩(ㄨㄢˊ)一(ㄧˊ)次(ㄘˋ)");
+            document.getElementById('result-title').innerHTML = rb("挑(ㄊㄧㄠˇ)戰(ㄓㄢˋ)結(ㄐㄧㄝˊ)束(ㄕㄨˋ)！");
+            document.getElementById('next-btn').innerHTML = rb("下(ㄒㄧㄚˋ)一(ㄧˋ)題(ㄊㄧˊ) ➡️");
+        }
+
+        function startGame() {
+            quizData = [...rawQuizData].sort(() => Math.random() - 0.5);
+            currentIdx = 0;
+            score = 0;
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            const data = quizData[currentIdx];
+            answered = false;
+            document.getElementById('quiz-header-left').innerHTML = rb(`第(ㄉㄧˋ) ${currentIdx + 1} / ${quizData.length} 題(ㄊㄧˊ)`);
+            document.getElementById('quiz-header-right').innerHTML = rb(`得(ㄉㄜˊ)分(ㄈㄣ)：${score}`);
+            document.getElementById('progress-bar').style.width = ((currentIdx + 1) / quizData.length * 100) + '%';
+            document.getElementById('question-text').innerHTML = rb(data.q);
+            document.getElementById('feedback-area').classList.add('hidden');
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+            
+            const options = [
+                { char: data.correct.char, isCorrect: true },
+                { char: data.wrong.char, isCorrect: false }
+            ].sort(() => Math.random() - 0.5);
+            
+            options.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = "option-btn min-w-[140px] min-h-[140px] text-7xl font-bold rounded-3xl border-4 shadow-sm " + 
+                                (index === 0 ? "bg-red-50 text-red-700 border-red-200 hover:bg-red-100" : "bg-green-50 text-green-700 border-green-200 hover:bg-green-100");
+                btn.innerText = opt.char;
+                btn.onclick = () => checkAnswer(opt, btn);
+                container.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(selectedOpt, selectedBtn) {
+            if (answered) return;
+            answered = true;
+            const data = quizData[currentIdx];
+            const isCorrect = selectedOpt.isCorrect;
+            
+            const buttons = document.querySelectorAll('.option-btn');
+            buttons.forEach((btn) => {
+                btn.disabled = true;
+                if (btn.innerText === data.correct.char) {
+                    btn.className = "option-btn min-w-[140px] min-h-[140px] text-7xl font-bold rounded-3xl border-4 bg-yellow-300 text-yellow-900 border-yellow-500 scale-105 shadow-lg z-10";
+                } else if (!isCorrect && btn === selectedBtn) {
+                    btn.className = "option-btn min-w-[140px] min-h-[140px] text-7xl font-bold rounded-3xl border-4 bg-gray-200 text-gray-400 border-gray-300 opacity-60";
+                }
+            });
+
+            const feedback = document.getElementById('feedback-area');
+            feedback.classList.remove('hidden');
+            document.getElementById('feedback-result').innerHTML = isCorrect ? rb("🌟 答(ㄉㄚˊ)對(ㄉㄨㄟˋ)了(ㄌㄜ˙)！") : rb("❌ 再(ㄗㄞˋ)加(ㄐㄧㄚ)把(ㄅㄚˇ)勁(ㄐㄧㄣˋ)！");
+            document.getElementById('feedback-result').className = "text-2xl font-bold mb-4 " + (isCorrect ? "text-green-600 bounce" : "text-red-600");
+            
+            const correctHTML = `<div class="text-green-700 font-bold mb-1">【正確答案】</div>
+                                 <div class="text-4xl mb-2">${rb(data.correct.char + '(' + data.correct.py + ')') }</div>
+                                 <div class="text-xl text-gray-800 font-bold">${rb(data.correct.phrase)}</div>`;
+            
+            const wrongHTML = `<div class="text-red-700 font-bold mb-1">【這是錯的】</div>
+                               <div class="text-4xl mb-2">${rb(data.wrong.char + '(' + data.wrong.py + ')') }</div>
+                               <div class="text-xl text-gray-800 font-bold">${rb(data.wrong.phrase)}</div>`;
+
+            document.getElementById('compare-left').innerHTML = correctHTML;
+            document.getElementById('compare-right').innerHTML = wrongHTML;
+
+            if (isCorrect) {
+                score += 10;
+                document.getElementById('question-text').innerHTML = rb(data.q).replace('<span class="bracket">「 　 」</span>', `<span class="text-blue-600 underline">${rb(data.correct.char + '(' + data.correct.py + ')')}</span>`);
+            }
+        }
+
+        function nextQuestion() {
+            currentIdx++;
+            if (currentIdx < quizData.length) loadQuestion();
+            else showResult();
+        }
+
+        function showResult() {
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            const total = quizData.length * 10;
+            const msg = score === total ? rb("太(ㄊㄞˋ)厲(ㄌㄧˋ)害(ㄏㄞˋ)了(ㄌㄜ˙)！你(ㄋㄧˇ)是(ㄕˋ)形(ㄒㄧㄥˊ)近(ㄐㄧˋ)字(ㄗˋ)小(ㄒㄧㄠˇ)達(ㄉㄚˊ)人(ㄖ園)！") : rb("繼(ㄐㄧˋ)續(ㄒㄩˋ)加油(ㄐㄧㄚㄧㄡˊ)！再(ㄗㄞˋ)多(ㄉㄨㄛ)練(ㄌㄧㄢˋ)習(ㄒㄧˊ)一(ㄧˊ)次(ㄘˋ)會(ㄏㄨㄟˋ)更(ㄍㄥˋ)棒(ㄅㄤˋ)！");
+            document.getElementById('result-text').innerHTML = msg;
+            document.getElementById('result-emoji').innerText = score === total ? "🏆" : "💪";
+        }
+
+        function resetGame() {
+            startGame();
+        }
+
+        window.onload = initStaticText;
+    </script>
+</body>
+</html>
